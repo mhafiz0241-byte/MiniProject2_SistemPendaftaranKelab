@@ -14,7 +14,7 @@
 <body class="bg-light">
     <div class ="container text-center mt-5">
         <div class = "card shadow p-5 mx-auto" style="max-width: 600px;">
-            <h1 classs = "text-primary mb-3">Sistem Pendaftaran Kelab</h1>
+            <h1 class = "text-primary mb-3">Sistem Pendaftaran Kelab</h1>
             <p class="lead text-muted mb-4">Selamat datang! Sila Log masuk ke dalam sistem pendaftaran atau pengurusan kelab.</p>
 
             <div class = "d-grid gap-2 col-6 mx-auto">
