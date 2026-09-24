@@ -19,8 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: ../views/student/register_club.php?error=" . urlencode("Sila pilih salah satu kelab!"));
             exit();
         }
-
-        // Panggil fungsi model untuk simpan pendaftaran
+        
         if ($clubModel->registerStudentToClub($user_id, $club_id)) {
             header("Location: ../views/student/my_registrations.php?success=" . urlencode("Tahniah! Pendaftaran kelab berjaya."));
             exit();
