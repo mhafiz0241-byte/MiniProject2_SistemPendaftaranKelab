@@ -1,72 +1,93 @@
 <?php
 session_start();
+
+// Sambungan database (naik dua tingkat dari View/student/ ke root, masuk config/)
 require_once '../../config/conn.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    header("Location: ../auth/login.php?error=" . urlencode("Sila log masuk terlebih dahulu."));
+// Semak keselamatan sesi pengguna
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'student') {
+    header("Location: ../auth/login.php");
     exit();
 }
 
-$query = "SELECT * FROM clubs";
-$result = $conn->query($query);
+$error = "";
+$success = "";
+
+// Logik untuk proses daftar kelab (jika borang dihantar)
+if (isset($_POST['btn_register_club'])) {
+    $club_id = $_POST['club_id'] ?? '';
+    $user_id = $_SESSION['user_id'];
+
+    if (empty($club_id)) {
+        $error = "Sila pilih kelab terlebih dahulu.";
+    } else {
+        // Semak jika pelajar sudah berdaftar dengan kelab ini
+        $stmt_check = $conn->prepare("SELECT id FROM registrations WHERE user_id = ? AND club_id = ?");
+        $stmt_check->bind_param("ii", $user_id, $club_id);
+        $stmt_check->execute();
+        $stmt_check->store_result();
+
+        if ($stmt_check->num_rows > 0) {
+            $error = "Anda sudah berdaftar dengan kelab ini!";
+        } else {
+            $stmt_check->close();
+
+            // Masukkan data pendaftaran kelab
+            $stmt_insert = $conn->prepare("INSERT INTO registrations (user_id, club_id) VALUES (?, ?)");
+            $stmt_insert->bind_param("ii", $user_id, $club_id);
+
+            if ($stmt_insert->execute()) {
+                $success = "Tahniah! Anda berjaya mendaftar kelab ini.";
+            } else {
+                $error = "Ralat berlaku semasa pendaftaran kelab.";
+            }
+            $stmt_insert->close();
+        }
+    }
+}
+
+// Panggil senarai kelab dari database untuk dropdown
+$clubs_result = $conn->query("SELECT * FROM clubs");
+
+// Panggil header layout (naik satu tingkat ke View/, masuk layout/)
+include '../layout/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="ms">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Kelab</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="dashboard.php">Sistem Pendaftaran Kelab</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="my_registrations.php">Kelab Saya</a>
-                <a class="nav-link text-danger" href="../auth/logout.php">Log Keluar</a>
-            </div>
+<div class="container mt-5" style="max-width: 600px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white text-center">
+            <h4>Daftar Kelab Baru</h4>
         </div>
-    </nav>
+        <div class="card-body">
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-danger"><?= $error; ?></div>
+            <?php endif; ?>
 
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow p-4">
-                    <h3 class="text-center mb-4">Daftar Kelab Baru</h3>
+            <?php if (!empty($success)): ?>
+                <div class="alert alert-success"><?= $success; ?></div>
+            <?php endif; ?>
 
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
-                    <?php endif; ?>
-
-                    <?php if (isset($_GET['success'])): ?>
-                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
-                    <?php endif; ?>
-
-                    <form action="../../controllers/MemberController.php?action=register_club" method="POST">
-                        <div class="mb-3">
-                            <label for="club_id" class="form-label">Pilih Kelab:</label>
-                            <select name="club_id" id="club_id" class="form-select" required>
-                                <option value="">-- Sila Pilih Kelab --</option>
-                                <?php while ($club = $result->fetch_assoc()): ?>
-                                    <option value="<?php echo $club['id']; ?>">
-                                        <?php echo htmlspecialchars($club['club_name']); ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Daftar Sekarang</button>
-                            <a href="dashboard.php" class="btn btn-secondary">Kembali</a>
-                        </div>
-                    </form>
+            <form method="POST" action="register_club.php">
+                <div class="mb-3">
+                    <label class="form-label">Pilih Kelab:</label>
+                    <select name="club_id" class="form-select" required>
+                        <option value="">-- Sila Pilih Kelab --</option>
+                        <?php while ($club = $clubs_result->fetch_assoc()): ?>
+                            <option value="<?= $club['id']; ?>"><?= htmlspecialchars($club['club_name']); ?></option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
-            </div>
+
+                <button type="submit" name="btn_register_club" class="btn btn-primary w-100 mb-2">Daftar Sekarang</button>
+                
+                <!-- Pautan Kembali yang telah dibetulkan kepada dashboard_student.php -->
+                <a href="dashboard_student.php" class="btn btn-secondary w-100">Kembali</a>
+            </form>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<?php 
+// Panggil footer layout
+include '../layout/footer.php'; 
+?>
