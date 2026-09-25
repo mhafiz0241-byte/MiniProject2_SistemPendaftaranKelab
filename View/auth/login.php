@@ -51,7 +51,6 @@ if (isset($_POST['btn_login'])) {
     }
 }
 
-// Keluar dari auth/ ke View/, kemudian masuk ke layout/header.php
 include '../layout/header.php';
 ?>
 
