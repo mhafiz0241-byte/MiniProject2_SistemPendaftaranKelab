@@ -1,12 +1,14 @@
 <?php
 session_start();
-include 'conn.php';
+
+// Naik dua tingkat dari View/auth/ untuk sampai ke root, kemudian masuk ke config/conn.php
+require_once '../../config/conn.php';
 
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] == 'admin') {
-        header("Location: dashboard.php");
+        header("Location: ../admin/dashboard.php");
     } else {
-        header("Location: dashboard_student.php");
+        header("Location: ../student/dashboard_student.php");
     }
     exit();
 }
@@ -35,9 +37,9 @@ if (isset($_POST['btn_login'])) {
                 $_SESSION['role']     = $row['role'];
 
                 if ($row['role'] == 'admin') {
-                    header("Location: dashboard.php");
+                    header("Location: ../admin/dashboard.php");
                 } else {
-                    header("Location: dashboard_student.php");
+                    header("Location: ../student/dashboard_student.php");
                 }
                 exit();
             } else {
@@ -49,7 +51,8 @@ if (isset($_POST['btn_login'])) {
     }
 }
 
-include 'header.php';
+// Keluar dari auth/ ke View/, kemudian masuk ke layout/header.php
+include '../layout/header.php';
 ?>
 
 <div class="container mt-5" style="max-width: 450px;">
@@ -80,4 +83,7 @@ include 'header.php';
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php 
+// Panggil footer dari folder layout/footer.php
+include '../layout/footer.php'; 
+?>

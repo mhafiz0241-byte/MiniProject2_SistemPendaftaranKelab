@@ -1,59 +1,48 @@
 <?php
 session_start();
-include 'conn.php';
 
-if (isset($_SESSION['user_id'])) {
-    if ($_SESSION['role'] == 'admin') {
-        header("Location: dashboard.php");
-    } else {
-        header("Location: dashboard_student.php");
-    }
-    exit();
-}
+// Naik dua tingkat dari View/auth/ untuk sampai ke root, kemudian masuk ke config/conn.php
+require_once '../../config/conn.php';
 
-$msg = "";
-$msg_type = "";
+$error = "";
+$success = "";
 
 if (isset($_POST['btn_register'])) {
     $username = trim($_POST['username']);
-    $pass     = $_POST['password'];
-    $role     = $_POST['role'];
+    $password = $_POST['password'];
+    $role = $_POST['role'] ?? 'student'; // Ambil role atau default ke student
 
-    if (empty($username) || empty($pass)) {
-        $msg = "Sila isi semua ruangan!";
-        $msg_type = "danger";
-    } elseif (strlen($pass) < 6) {
-        $msg = "Kata laluan sekurang-kurangnya 6 aksara.";
-        $msg_type = "danger";
+    if (empty($username) || empty($password)) {
+        $error = "Sila lengkapkan semua maklumat.";
     } else {
-        $check_sql = "SELECT id FROM users WHERE username = ?";
-        $stmt = $conn->prepare($check_sql);
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $res = $stmt->get_result();
+        // Semak sama ada username sudah wujud
+        $stmt_check = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $stmt_check->bind_param("s", $username);
+        $stmt_check->execute();
+        $stmt_check->store_result();
 
-        if ($res->num_rows > 0) {
-            $msg = "Nama pengguna telah wujud!";
-            $msg_type = "danger";
+        if ($stmt_check->num_rows >  0) {
+            $error = "Username telah digunakan. Sila pilih username lain.";
         } else {
-            $hash = password_hash($pass, PASSWORD_DEFAULT);
+            $stmt_check->close();
 
-            $sql = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
-            $insert_stmt = $conn->prepare($sql);
-            $insert_stmt->bind_param("sss", $username, $hash, $role);
+            // Masukkan pengguna baru (password di-hash menggunakan password_hash)
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            $stmt_insert = $conn->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+            $stmt_insert->bind_param("sss", $username, $hashed_password, $role);
 
-            if ($insert_stmt->execute()) {
-                $msg = "Akaun berjaya didaftarkan! <a href='login.php'>Log masuk di sini</a>.";
-                $msg_type = "success";
+            if ($stmt_insert->execute()) {
+                $success = "Pendaftaran berjaya! Sila <a href='login.php'>Log Masuk</a>.";
             } else {
-                $msg = "Ralat pendaftaran ke dalam pangkalan data.";
-                $msg_type = "danger";
+                $error = "Ralat berlaku semasa pendaftaran.";
             }
+            $stmt_insert->close();
         }
     }
 }
 
-include 'header.php';
+// Panggil header dari View/layout/header.php
+include '../layout/header.php';
 ?>
 
 <div class="container mt-5" style="max-width: 450px;">
@@ -62,19 +51,23 @@ include 'header.php';
             <h4>Pendaftaran Pengguna</h4>
         </div>
         <div class="card-body">
-            <?php if (!empty($msg)): ?>
-                <div class="alert alert-<?= $msg_type; ?>"><?= $msg; ?></div>
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-danger"><?= $error; ?></div>
             <?php endif; ?>
 
-            <form method="POST" action="register.php" onsubmit="return checkForm();">
+            <?php if (!empty($success)): ?>
+                <div class="alert alert-success"><?= $success; ?></div>
+            <?php endif; ?>
+
+            <form method="POST" action="register.php">
                 <div class="mb-3">
                     <label class="form-label">Username</label>
-                    <input type="text" name="username" id="username" class="form-control" required>
+                    <input type="text" name="username" class="form-control" required>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <input type="password" name="password" id="password" class="form-control" required>
+                    <input type="password" name="password" class="form-control" required>
                 </div>
 
                 <div class="mb-3">
@@ -92,21 +85,7 @@ include 'header.php';
     </div>
 </div>
 
-<script>
-function checkForm() {
-    var u = document.getElementById('username').value;
-    var p = document.getElementById('password').value;
-
-    if (u.length < 3) {
-        alert("Username sekurang-kurangnya 3 aksara.");
-        return false;
-    }
-    if (p.length < 6) {
-        alert("Password sekurang-kurangnya 6 aksara.");
-        return false;
-    }
-    return true;
-}
-</script>
-
-<?php include 'footer.php'; ?>
+<?php 
+// Panggil footer dari View/layout/footer.php
+include '../layout/footer.php'; 
+?>

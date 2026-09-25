@@ -1,46 +1,53 @@
 <?php
 session_start();
-include 'conn.php';
 
+// Naik dua tingkat dari View/student/ untuk sampai ke root, kemudian masuk ke config/conn.php
+require_once '../../config/conn.php';
+
+// Semak sama ada pengguna sudah log masuk dan berperanan sebagai student
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'student') {
-    header("Location: login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
-include 'header.php';
+// Panggil header dari View/layout/header.php (Naik satu tingkat ke View/ kemudian masuk layout/)
+include '../layout/header.php';
 ?>
 
 <div class="container mt-4">
-    <div class="p-4 mb-4 bg-light rounded-3 shadow-sm">
-        <h2>Selamat Datang, <?= htmlspecialchars($_SESSION['username']); ?>!</h2>
-        <p class="mb-0">Portal Pelajar - Sistem Pendaftaran Kelab</p>
-    </div>
+    <div class="p-5 mb-4 bg-white rounded-3 shadow-sm border">
+        <div class="container-fluid py-3">
+            <h1 class="display-6 fw-bold">Selamat Datang, <?= htmlspecialchars($_SESSION['username']); ?>!</h1>
+            <p class="col-md-8 fs-5 text-muted">Portal Pelajar - Sistem Pendaftaran Kelab</p>
+            <hr class="my-4">
+            
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-success">Senarai Kelab</h5>
+                            <p class="card-text">Lihat dan daftar kelab pilihan anda secara dalam talian.</p>
+                            <a href="register_club.php" class="btn btn-success">Lihat Kelab</a>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="row mt-4">
-        <div class="col-md-6 mb-3">
-            <div class="card text-center h-100 shadow-sm">
-                <div class="card-body d-flex flex-column justify-content-center">
-                    <h5 class="card-title">Senarai Kelab</h5>
-                    <p class="card-text">Lihat dan daftar kelab pilihan anda secara dalam talian.</p>
-                    <div>
-                        <a href="club_list.php" class="btn btn-primary">Lihat Kelab</a>
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger">Akaun Saya</h5>
+                            <p class="card-text">Log keluar daripada sistem secara selamat.</p>
+                            <a href="../auth/logout.php" class="btn btn-outline-danger">Log Keluar</a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6 mb-3">
-            <div class="card text-center h-100 shadow-sm">
-                <div class="card-body d-flex flex-column justify-content-center">
-                    <h5 class="card-title">Akaun Saya</h5>
-                    <p class="card-text">Log keluar daripada sistem secara selamat.</p>
-                    <div>
-                        <a href="logout.php" class="btn btn-danger">Log Keluar</a>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
 
-<?php include 'footer.php'; ?>
+<?php 
+// Panggil footer dari View/layout/footer.php
+include '../layout/footer.php'; 
+?>
