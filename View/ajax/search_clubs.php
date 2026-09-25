@@ -33,4 +33,5 @@ if (count($clubs) > 0){
   echo '</tbody></table>';
 }else{
   echo'<div class="alert alert-warning mt-3">No clubs found matching your query.</div>';
+}
   ?>
