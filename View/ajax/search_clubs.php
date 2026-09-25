@@ -22,7 +22,7 @@ if (count($clubs) > 0){
     </tr>
     </thead>
     <tbody>';
-  foreach ($clubs as $clubs) {
+  foreach ($clubs as $club) {
     echo '<tr>
             <td>' . htmlspecialchars($club['id']) . '</td>
             <td>' . htmlspecialchars($club['club_name']) . '</td>
@@ -31,6 +31,6 @@ if (count($clubs) > 0){
             </tr>';
   }
   echo '</tbody></table>';
-  else{
+}else{
   echo'<div class="alert alert-warning mt-3">No clubs found matching your query.</div>';
-      
+  ?>
