@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-// Semak sama ada ini adalah permintaan AJAX
+// Semak permintaan AJAX
 if (isset($_GET['ajax_search'])) {
     $search = trim($_GET['ajax_search']);
     $sql = "SELECT r.*, u.username AS student_name, c.club_name 
@@ -41,7 +41,7 @@ if (isset($_GET['ajax_search'])) {
     } else {
         echo '<tr><td colspan="4" class="text-center text-danger py-4">Tiada rekod pendaftaran dijumpai.</td></tr>';
     }
-    exit(); // Hentikan di sini supaya ia tidak memaparkan seluruh HTML page untuk permintaan AJAX
+    exit();
 }
 
 // Paparan asal halaman
@@ -67,7 +67,7 @@ $result = $conn->query($query);
     <!-- Navbar Admin -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="dashboard_admin.php">Admin Panel - Sistem Kelab</a>
+            <a class="navbar-brand" href="dashboard.php">Admin Panel - Sistem Kelab</a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="manage_clubs.php">Urus Kelab</a>
                 <a class="nav-link active" href="view_registrations.php">Senarai Pendaftaran Pelajar</a>
@@ -79,12 +79,12 @@ $result = $conn->query($query);
     <div class="container mt-5 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold">Senarai Pendaftaran Pelajar</h2>
-            <a href="dashboard_admin.php" class="btn btn-secondary">Kembali ke Dashboard</a>
+            <a href="dashboard.php" class="btn btn-secondary">Kembali ke Dashboard</a>
         </div>
 
         <div class="card shadow border-0 rounded-4 p-4 bg-white">
             
-            <!-- Kotak Carian AJAX -->
+            <!-- Kotak Carian -->
             <div class="mb-4">
                 <label for="searchStudent" class="form-label fw-bold text-secondary">
                     <i class="fa-solid fa-magnifying-glass"></i> Cari Pelajar atau Kelab (Live Search):
@@ -125,21 +125,24 @@ $result = $conn->query($query);
         </div>
     </div>
 
-    <!-- Skrip AJAX Terus ke Fail Ini Sendiri -->
+    <!-- Skrip Fetch API Moden -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    document.getElementById('searchStudent').addEventListener('input', function() {
-        let query = this.value;
+    const searchInput = document.getElementById('searchStudent');
+    const tableBody = document.getElementById('registrationTableBody');
 
-        let xhr = new XMLHttpRequest();
-        // Memanggil fail ini sendiri dengan parameter ajax_search
-        xhr.open('GET', 'view_registrations.php?ajax_search=' + encodeURIComponent(query), true);
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                document.getElementById('registrationTableBody').innerHTML = xhr.responseText;
-            }
-        };
-        xhr.send();
+    searchInput.addEventListener('keyup', function() {
+        let query = this.value.trim();
+
+        // Menggunakan Fetch API untuk hantar permintaan ke fail ini sendiri
+        fetch('view_registrations.php?ajax_search=' + encodeURIComponent(query))
+            .then(response => response.text())
+            .then(data => {
+                tableBody.innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Ralat AJAX:', error);
+            });
     });
     </script>
 </body>
