@@ -25,8 +25,7 @@ $result = $conn->query($query);
         <div class="container">
             <a class="navbar-brand" href="dashboard.php">Admin Panel - Sistem Kelab</a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link active" href="manage_club.php">Urus Kelab</a>
-                <!-- Pautan ke view_registrations.php -->
+                <a class="nav-link active" href="manage_clubs.php">Urus Kelab</a>
                 <a class="nav-link" href="view_registrations.php">Senarai Pendaftaran Pelajar</a>
                 <a class="nav-link text-danger" href="../auth/logout.php">Log Keluar</a>
             </div>
@@ -59,7 +58,7 @@ $result = $conn->query($query);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($result->num_rows > 0): ?>
+                        <?php if ($result && $result->num_rows > 0): ?>
                             <?php $no = 1; while ($club = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo $no++; ?></td>

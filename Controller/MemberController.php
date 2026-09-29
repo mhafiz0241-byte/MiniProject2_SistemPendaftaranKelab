@@ -1,30 +1,32 @@
 <?php
 session_start();
 require_once '../config/conn.php';
-require_once '../models/Club.php';
+require_once '../Model/Club.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    header("Location: ../views/auth/login.php?error=" . urlencode("Please log in as a student first."));
+    header("Location: ../View/auth/login.php?error=" . urlencode("Sila log masuk sebagai pelajar terlebih dahulu."));
     exit();
 }
 
 $clubModel = new Club($conn);
 $action = isset($_GET['action']) ? $_GET['action'] : '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($action === 'register_club') {
+    // Ditukar daripada 'register_club' kepada 'register' mengikut borang HTML
+    if ($action === 'register') {
         $user_id = $_SESSION['user_id']; 
         $club_id = trim($_POST['club_id']); 
 
         if (empty($club_id)) {
-            header("Location: ../views/student/register_club.php?error=" . urlencode("Please choose one club only!"));
+            header("Location: ../View/student/register_club.php?error=" . urlencode("Sila pilih satu kelab!"));
             exit();
         }
 
         if ($clubModel->registerStudentToClub($user_id, $club_id)) {
-            header("Location: ../views/student/my_registrations.php?success=" . urlencode("Club registered succesfully!"));
+            header("Location: ../View/student/dashboard_student.php?success=" . urlencode("Kelab berjaya didaftarkan!"));
             exit();
         } else {
-            header("Location: ../views/student/register_club.php?error=" . urlencode("Failed to register the club or you haved joined this club."));
+            header("Location: ../View/student/register_club.php?error=" . urlencode("Gagal mendaftar kelab atau anda sudah menyertai kelab ini."));
             exit();
         }
     }
@@ -34,10 +36,10 @@ if ($action === 'cancel') {
     $registration_id = $_GET['id'] ?? null;
 
     if ($registration_id && $clubModel->cancelRegistration($registration_id)) {
-        header("Location: ../views/student/my_registrations.php?success=" . urlencode("Your club registered has been canceled"));
+        header("Location: ../View/student/dashboard_student.php?success=" . urlencode("Pendaftaran kelab anda telah dibatalkan."));
         exit();
     } else {
-        header("Location: ../views/student/my_registrations.php?error=" . urlencode("Failed to cancel the register."));
+        header("Location: ../View/student/dashboard_student.php?error=" . urlencode("Gagal membatalkan pendaftaran."));
         exit();
     }
 }

@@ -1,48 +1,30 @@
 <?php
 session_start();
+require_once '../../config/conn.php';
 
-// Semak sesi pengguna (mesti login & peranan student)
+// Pastikan hanya pelajar yang boleh akses
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
-    header("Location: ../auth/user.php");
+    header("Location: ../auth/login.php?error=" . urlencode("Akses ditolak! Sila log masuk sebagai pelajar."));
     exit();
 }
 
-require_once '../../config/conn.php';
+$student_id = $_SESSION['user_id'];
 
-$message = '';
-$alertType = 'danger';
+// Semak sama ada pelajar sudah mendaftar kelab atau belum (Guna nama jadual 'registrations')
+$checkQuery = "SELECT rc.*, c.club_name, c.description FROM registrations rc 
+               JOIN clubs c ON rc.club_id = c.id 
+               WHERE rc.user_id = ?";
+$stmt = $conn->prepare($checkQuery);
+$stmt->bind_param("i", $student_id);
+$stmt->execute();
+$resultReg = $stmt->get_result();
+$isRegistered = $resultReg->num_rows > 0;
+$registeredClub = $isRegistered ? $resultReg->fetch_assoc() : null;
+$stmt->close();
 
-// Proses borang pendaftaran kelab
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $userId = $_SESSION['user_id'];
-    $clubId = isset($_POST['club_id']) ? intval($_POST['club_id']) : 0;
-
-    if ($clubId <= 0) {
-        $message = "Sila pilih kelab yang sah.";
-    } else {
-        // Semak jika pelajar sudah mendaftar kelab ini (registrations table)
-        $checkStmt = $pdo->prepare("SELECT id FROM registrations WHERE user_id = ? AND club_id = ?");
-        $checkStmt->execute([$userId, $clubId]);
-
-        if ($checkStmt->rowCount() > 0) {
-            $message = "Anda sudah mendaftar untuk kelab ini!";
-            $alertType = "warning";
-        } else {
-            // Masukkan data ke dalam jadual registrations
-            $stmt = $pdo->prepare("INSERT INTO registrations (user_id, club_id) VALUES (?, ?)");
-            if ($stmt->execute([$userId, $clubId])) {
-                $message = "Permohonan pendaftaran kelab berjaya dihantar!";
-                $alertType = "success";
-            } else {
-                $message = "Gagal mendaftar kelab. Sila cuba lagi.";
-            }
-        }
-    }
-}
-
-// Ambil senarai kelab dari jadual clubs
-$clubsQuery = $pdo->query("SELECT * FROM clubs ORDER BY club_name ASC");
-$clubs = $clubsQuery->fetchAll(PDO::FETCH_ASSOC);
+// Ambil senarai semua kelab untuk dropdown asal
+$clubQuery = "SELECT * FROM clubs ORDER BY club_name ASC";
+$clubResult = $conn->query($clubQuery);
 ?>
 
 <!DOCTYPE html>
@@ -50,171 +32,126 @@ $clubs = $clubsQuery->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pendaftaran Kelab - Portal Pelajar</title>
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Google Fonts (Plus Jakarta Sans) -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #f0f4f8;
-            color: #2d3748;
-            min-height: 100vh;
-        }
-
-        /* Custom Modern Navbar */
-        .custom-navbar {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            border-bottom: 3px solid #10b981;
-        }
-
-        /* Unique Form Card Styling */
-        .form-card {
-            border: none;
-            border-radius: 20px;
-            background: #ffffff;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-            overflow: hidden;
-            transition: transform 0.2s ease;
-        }
-
-        .form-header-custom {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: white;
-            padding: 28px 30px;
-            border: none;
-        }
-
-        /* Styled Dropdown & Inputs */
-        .form-select-custom {
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 16px;
-            font-weight: 500;
-            color: #334155;
-            transition: all 0.2s ease;
-        }
-
-        .form-select-custom:focus {
-            border-color: #10b981;
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
-        }
-
-        /* Custom Buttons */
-        .btn-emerald {
-            background: #10b981;
-            color: #ffffff;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-weight: 600;
-            border: none;
-            transition: all 0.2s ease;
-        }
-
-        .btn-emerald:hover {
-            background: #059669;
-            color: #ffffff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-soft {
-            background: #f1f5f9;
-            color: #475569;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-weight: 600;
-            border: none;
-            transition: all 0.2s ease;
-        }
-
-        .btn-soft:hover {
-            background: #e2e8f0;
-            color: #1e293b;
-        }
-    </style>
+    <title>Pendaftaran Kelab - Pelajar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-light">
 
-<!-- Custom Navigation Bar -->
-<nav class="navbar navbar-expand-lg navbar-dark custom-navbar py-3">
-    <div class="container">
-        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="dashboard.php">
-            <i class="bi bi-shield-check text-warning fs-4"></i>
-            <span>Portal Siswa</span>
-        </a>
-        <div class="d-flex align-items-center gap-3">
-            <span class="text-light small">
-                <i class="bi bi-person-circle me-1 text-emerald"></i>
-                <strong><?= htmlspecialchars($_SESSION['username']) ?></strong>
-            </span>
-            <a href="../auth/user.php" class="btn btn-outline-light btn-sm rounded-pill px-3">Log Keluar</a>
+    <!-- Navbar Pelajar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard_student.php">Sistem Pendaftaran Kelab</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="register_club.php">Mohon Kelab</a>
+                <a class="nav-link text-warning" href="../auth/logout.php">Log Keluar</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                
+                <!-- Header kad -->
+                <div class="card shadow border-0 rounded-4 p-4 bg-white mb-4">
+                    <div class="text-center mb-3">
+                        <i class="fa-solid fa-address-card fa-3x text-success mb-2"></i>
+                        <h2 class="fw-bold">Borang Permohonan Kelab</h2>
+                        <p class="text-muted">Sila pilih atau cari kelab yang ingin anda sertai bagi sesi ini</p>
+                    </div>
+
+                    <?php if (isset($_GET['error'])): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
+                    <?php endif; ?>
+
+                    <?php if (isset($_GET['success'])): ?>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($isRegistered): ?>
+                        <!-- Paparan Jika Pelajar Sudah Mendaftar Kelab -->
+                        <div class="alert alert-info border-0 shadow-sm p-4">
+                            <h4 class="alert-heading fw-bold"><i class="fa-solid fa-circle-check"></i> Anda Telah Berdaftar!</h4>
+                            <p class="mb-1">Anda sudah menyertai kelab berikut:</p>
+                            <hr>
+                            <h5 class="fw-bold text-success"><?php echo htmlspecialchars($registeredClub['club_name']); ?></h5>
+                            <p class="text-muted mb-0"><?php echo htmlspecialchars($registeredClub['description']); ?></p>
+                        </div>
+                    <?php else: ?>
+                        <!-- Borang Pendaftaran & Carian AJAX -->
+                        <form action="../../Controller/MemberController.php?action=register" method="POST">
+                            
+                            <!-- Bahagian 1: Dropdown Pilihan Asal -->
+                            <div class="mb-4">
+                                <label for="club_id" class="form-label fw-bold">Pilih Kelab Pilihan Anda:</label>
+                                <select class="form-select form-select-lg" id="club_id" name="club_id" required>
+                                    <option value="" selected disabled>-- Pilih Kelab Pilihan Anda --</option>
+                                    <?php if ($clubResult && $clubResult->num_rows > 0): ?>
+                                        <?php while ($club = $clubResult->fetch_assoc()): ?>
+                                            <option value="<?php echo $club['id']; ?>">
+                                                📌 <?php echo htmlspecialchars($club['club_name']); ?>
+                                            </option>
+                                        <?php endwhile; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-success btn-lg fw-bold">Hantar Permohonan Kelab</button>
+                            </div>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <!-- Bahagian 2: Ciri Live Search AJAX -->
+                        <div class="card bg-light border-0 p-3 rounded-3">
+                            <div class="mb-3">
+                                <label for="searchClub" class="form-label fw-bold text-secondary">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Cari Kelab:
+                                </label>
+                                <input type="text" id="searchClub" class="form-control" placeholder="Taip nama kelab atau penerangan...">
+                            </div>
+
+                            <!-- Tempat paparan keputusan carian AJAX secara dinamik -->
+                            <div id="clubSearchResults">
+                                <!-- Keputusan dari search_clubs.php akan muncul di sini secara automatik -->
+                            </div>
+                        </div>
+
+                    <?php endif; ?>
+
+                </div>
+            </div>
         </div>
     </div>
-</nav>
 
-<!-- Main Body Content -->
-<div class="container py-5" style="max-width: 650px;">
-    <div class="card form-card">
-        <div class="form-header-custom text-center">
-            <i class="bi bi-card-checklist fs-1 mb-2 d-block"></i>
-            <h4 class="fw-bold mb-1">Borang Permohonan Kelab</h4>
-            <p class="small opacity-75 mb-0">Sila pilih kelab yang ingin anda sertai bagi sesi ini</p>
-        </div>
-        
-        <div class="card-body p-4 p-md-5">
+    <!-- Pustaka jQuery untuk AJAX -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    $(document).ready(function(){
+        // Fungsi Live Search AJAX apabila pengguna menaip
+        $('#searchClub').on('keyup', function(){
+            var query = $(this).val();
+            
+            $.ajax({
+                url: '../ajax/search_clubs.php',
+                method: 'GET',
+                data: { q: query },
+                success: function(data){
+                    $('#clubSearchResults').html(data);
+                },
+                error: function() {
+                    $('#clubSearchResults').html('<p class="text-danger text-center">Gagal memuatkan carian.</p>');
+                }
+            });
+        });
 
-            <?php if (!empty($message)): ?>
-                <div class="alert alert-<?= $alertType ?> alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
-                    <i class="bi bi-info-circle-fill me-2"></i>
-                    <?= htmlspecialchars($message) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
-
-            <form method="POST" action="register_club.php" onsubmit="return validateForm()">
-                <div class="mb-4">
-                    <label for="club_id" class="form-label fw-bold text-secondary small text-uppercase">Senarai Kelab Terbuka</label>
-                    <select name="club_id" id="club_id" class="form-select form-select-custom" required>
-                        <option value="" selected disabled>-- Pilih Kelab Pilihan Anda --</option>
-                        <?php foreach ($clubs as $club): ?>
-                            <option value="<?= $club['id'] ?>">
-                                📌 <?= htmlspecialchars($club['club_name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="d-flex align-items-center justify-content-between gap-3 pt-3">
-                    <a href="dashboard.php" class="btn btn-soft w-50 text-center">
-                        <i class="bi bi-arrow-left me-1"></i> Kembali
-                    </a>
-                    <button type="submit" class="btn btn-emerald w-50">
-                        <i class="bi bi-send-fill me-1"></i> Hantar
-                    </button>
-                </div>
-            </form>
-
-        </div>
-    </div>
-</div>
-
-<script>
-function validateForm() {
-    const clubSelect = document.getElementById('club_id');
-    if (clubSelect.value === "" || clubSelect.value === null) {
-        alert("Sila pilih satu kelab daripada senarai.");
-        return false;
-    }
-    return true;
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        // Cetuskan carian kosong secara automatik semasa mula buka halaman
+        $('#searchClub').trigger('keyup');
+    });
+    </script>
 </body>
 </html>

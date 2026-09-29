@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../config/conn.php';
-require_once '../models/Club.php';
+require_once '../Model/Club.php'; 
 
 $clubModel = new Club($conn);
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -12,15 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = trim($_POST['description']);
 
         if (empty($club_name) || empty($description)) {
-            header("Location: ../views/admin/add_club.php?error=" . urlencode("Please fill the blanks!"));
+            header("Location: ../View/admin/add_club.php?error=" . urlencode("Sila isi semua ruangan yang kosong!"));
             exit();
         }
 
         if ($clubModel->addClub($club_name, $description)) {
-            header("Location: ../views/admin/dashboard.php?success=" . urlencode("The club has succesfully been added!"));
+            header("Location: ../View/admin/manage_clubs.php?success=" . urlencode("Kelab berjaya ditambah!"));
             exit();
         } else {
-            header("Location:../views/admin/add_club.php?error=" . urlencode(Failed to add!));
+            header("Location: ../View/admin/add_club.php?error=" . urlencode("Gagal menambah kelab!"));
             exit();
         }
     }
@@ -30,10 +30,10 @@ if ($action === 'delete') {
     $id = $_GET['id'] ?? null;
 
     if ($id && $clubModel->deleteClub($id)) {
-        header("Location:../views/admin/dashboard.php?success=" . urlencode("The club has been succesfully deleted!"));
+        header("Location: ../View/admin/manage_clubs.php?success=" . urlencode("Kelab berjaya dipadam!"));
         exit();
     } else {
-        header("Location:../views/admin/dashboard.php?error=" . urlencode("Failed to delete the club."));
+        header("Location: ../View/admin/manage_clubs.php?error=" . urlencode("Gagal memadam kelab."));
         exit();
     }
 }

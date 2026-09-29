@@ -7,6 +7,20 @@ class Club {
         $this->conn = $dbConnection;
     }
 
+    // Fungsi untuk menambah kelab baharu (Admin)
+    public function addClub($club_name, $description) {
+        $stmt = $this->conn->prepare("INSERT INTO clubs (club_name, description) VALUES (?, ?)");
+        $stmt->bind_param("ss", $club_name, $description);
+        return $stmt->execute();
+    }
+
+    // Fungsi untuk memadam kelab (Admin)
+    public function deleteClub($id) {
+        $stmt = $this->conn->prepare("DELETE FROM clubs WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
     public function registerStudentToClub($userId, $clubId) {
         $checkStmt = $this->conn->prepare("SELECT id FROM registrations WHERE user_id = ? AND club_id = ?");
         $checkStmt->bind_param("ii", $userId, $clubId);

@@ -9,7 +9,7 @@
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="../../index.php">KelabPoli</a>
+            <a class="navbar-brand fw-bold" href="../../index.php">Portal Siswa</a>
         </div>
     </nav>
     <div class="container mt-4">
