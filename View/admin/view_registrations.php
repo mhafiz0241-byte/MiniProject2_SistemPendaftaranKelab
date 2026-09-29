@@ -2,18 +2,54 @@
 session_start();
 require_once '../../config/conn.php';
 
-// Semak keselamatan: pastikan hanya admin yang boleh akses
+// Pastikan hanya admin yang boleh akses
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php?error=" . urlencode("Akses ditolak! Sila log masuk sebagai admin."));
     exit();
 }
 
-// Query diselaraskan menggunakan r.user_id mengikut struktur database anda
-$query = "SELECT r.id, u.username AS student_name, c.club_name, r.registration_date 
-          FROM registrations r
-          JOIN users u ON r.user_id = u.id
-          JOIN clubs c ON r.club_id = c.id
-          ORDER BY r.id DESC";
+// Semak sama ada ini adalah permintaan AJAX
+if (isset($_GET['ajax_search'])) {
+    $search = trim($_GET['ajax_search']);
+    $sql = "SELECT r.*, u.username AS student_name, c.club_name 
+            FROM registrations r 
+            JOIN users u ON r.user_id = u.id 
+            JOIN clubs c ON r.club_id = c.id";
+
+    if ($search !== '') {
+        $sql .= " WHERE u.username LIKE ? OR c.club_name LIKE ? ORDER BY r.registration_date DESC";
+        $stmt = $conn->prepare($sql);
+        $searchTerm = "%" . $search . "%";
+        $stmt->bind_param("ss", $searchTerm, $searchTerm);
+        $stmt->execute();
+        $result = $stmt->get_result();
+    } else {
+        $sql .= " ORDER BY r.registration_date DESC";
+        $result = $conn->query($sql);
+    }
+
+    if ($result && $result->num_rows > 0) {
+        $no = 1;
+        while ($row = $result->fetch_assoc()) {
+            echo '<tr>';
+            echo '<td>' . $no++ . '</td>';
+            echo '<td class="fw-bold">' . htmlspecialchars($row['student_name']) . '</td>';
+            echo '<td><span class="badge bg-primary">' . htmlspecialchars($row['club_name']) . '</span></td>';
+            echo '<td>' . $row['registration_date'] . '</td>';
+            echo '</tr>';
+        }
+    } else {
+        echo '<tr><td colspan="4" class="text-center text-danger py-4">Tiada rekod pendaftaran dijumpai.</td></tr>';
+    }
+    exit(); // Hentikan di sini supaya ia tidak memaparkan seluruh HTML page untuk permintaan AJAX
+}
+
+// Paparan asal halaman
+$query = "SELECT r.*, u.username AS student_name, c.club_name 
+          FROM registrations r 
+          JOIN users u ON r.user_id = u.id 
+          JOIN clubs c ON r.club_id = c.id 
+          ORDER BY r.registration_date DESC";
 $result = $conn->query($query);
 ?>
 
@@ -22,41 +58,43 @@ $result = $conn->query($query);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Senarai Pendaftaran Pelajar - Admin</title>
+    <title>Senarai Pendaftaran Pelajar - Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-light">
 
-    <!-- Navigasi Admin -->
+    <!-- Navbar Admin -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="dashboard.php">Admin Panel - Sistem Kelab</a>
+            <a class="navbar-brand" href="dashboard_admin.php">Admin Panel - Sistem Kelab</a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="manage_clubs.php">Urus Kelab</a>
                 <a class="nav-link active" href="view_registrations.php">Senarai Pendaftaran Pelajar</a>
-                <a class="nav-link text-danger" href="../auth/logout.php">Log Keluar</a>
+                <a class="nav-link text-warning" href="../auth/logout.php">Log Keluar</a>
             </div>
         </div>
     </nav>
 
-    <!-- Kandungan Utama -->
-    <div class="container mt-4">
+    <div class="container mt-5 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Senarai Pendaftaran Pelajar</h2>
-            <a href="dashboard.php" class="btn btn-secondary btn-sm">Kembali ke Dashboard</a>
+            <h2 class="fw-bold">Senarai Pendaftaran Pelajar</h2>
+            <a href="dashboard_admin.php" class="btn btn-secondary">Kembali ke Dashboard</a>
         </div>
 
-        <?php if (isset($_GET['error'])): ?>
-            <div class="alert alert-danger"><?php echo htmlspecialchars($_GET['error']); ?></div>
-        <?php endif; ?>
+        <div class="card shadow border-0 rounded-4 p-4 bg-white">
+            
+            <!-- Kotak Carian AJAX -->
+            <div class="mb-4">
+                <label for="searchStudent" class="form-label fw-bold text-secondary">
+                    <i class="fa-solid fa-magnifying-glass"></i> Cari Pelajar atau Kelab (Live Search):
+                </label>
+                <input type="text" id="searchStudent" class="form-control form-control-lg" placeholder="Taip nama pelajar atau nama kelab...">
+            </div>
 
-        <?php if (isset($_GET['success'])): ?>
-            <div class="alert alert-success"><?php echo htmlspecialchars($_GET['success']); ?></div>
-        <?php endif; ?>
-
-        <div class="card shadow p-3">
+            <!-- Jadual Paparan Data -->
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
+                <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
                             <th>No.</th>
@@ -65,31 +103,44 @@ $result = $conn->query($query);
                             <th>Tarikh Pendaftaran</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="registrationTableBody">
                         <?php if ($result && $result->num_rows > 0): ?>
                             <?php $no = 1; while ($row = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo $no++; ?></td>
-                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
-                                    <td>
-                                        <span class="badge bg-primary">
-                                            <?php echo htmlspecialchars($row['club_name']); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['registration_date'] ?? 'Tiada Tarikh'); ?></td>
+                                    <td class="fw-bold"><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td><span class="badge bg-primary"><?php echo htmlspecialchars($row['club_name']); ?></span></td>
+                                    <td><?php echo $row['registration_date']; ?></td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">Tiada rekod pendaftaran pelajar buat masa ini.</td>
+                                <td colspan="4" class="text-center text-danger py-4">Tiada rekod pendaftaran dijumpai.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 
+    <!-- Skrip AJAX Terus ke Fail Ini Sendiri -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.getElementById('searchStudent').addEventListener('input', function() {
+        let query = this.value;
+
+        let xhr = new XMLHttpRequest();
+        // Memanggil fail ini sendiri dengan parameter ajax_search
+        xhr.open('GET', 'view_registrations.php?ajax_search=' + encodeURIComponent(query), true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                document.getElementById('registrationTableBody').innerHTML = xhr.responseText;
+            }
+        };
+        xhr.send();
+    });
+    </script>
 </body>
 </html>
